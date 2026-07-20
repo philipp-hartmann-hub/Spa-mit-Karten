@@ -468,3 +468,15 @@ Nach **jedem** User-Prompt zwingend aktualisieren.
 - Stadtname-Label und Tooltip auf den Stadtpunkten entfernt; Feedback bleibt nur über Farbe/HUD
 
 **Status:** erledigt
+
+---
+
+## 2026-07-20 — Prompt 37
+
+**User:** Push auf GitHub.
+
+**Aktion:**
+- Änderungen committed und nach `origin/main` gepusht
+- Repo: https://github.com/philipp-hartmann-hub/Spa-mit-Karten
+
+**Status:** erledigt
