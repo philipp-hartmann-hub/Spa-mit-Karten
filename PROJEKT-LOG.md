@@ -404,3 +404,16 @@ Nach **jedem** User-Prompt zwingend aktualisieren.
 - Git-Status prüfen, Repo anlegen und mit GitHub verknüpfen
 
 **Status:** in Arbeit
+
+**Status:** lokal Git initialisiert + erstes Commit; GitHub-CLI fehlt — Remote-Verknüpfung braucht Repo-URL vom User
+
+---
+
+## 2026-07-20 — Prompt 32
+
+**User:** GitHub-Repo https://github.com/philipp-hartmann-hub/Spa-mit-Karten verbinden.
+
+**Aktion:**
+- Remote setzen und main pushen
+
+**Status:** in Arbeit
