@@ -417,3 +417,5 @@ Nach **jedem** User-Prompt zwingend aktualisieren.
 - Remote setzen und main pushen
 
 **Status:** in Arbeit
+
+**Status:** erledigt — Remote origin gesetzt, main gepusht
