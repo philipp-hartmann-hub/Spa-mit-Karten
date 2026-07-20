@@ -290,17 +290,29 @@ export function WorldMap({
     })
   }, [size])
 
+  const focusKey = viewKey(focus, zoomCountry)
+  const zoomCountryRef = useRef(zoomCountry)
+  zoomCountryRef.current = zoomCountry
+  const focusRef = useRef(focus)
+  focusRef.current = focus
+
   useEffect(() => {
-    const nextKey = viewKey(focus, zoomCountry)
-    if (keyRef.current === nextKey) return
+    const nextKey = focusKey
+    if (keyRef.current === nextKey) {
+      // Verhindert hängenden Zoom-Schleier nach abgebrochener Animation
+      setZooming(false)
+      return
+    }
 
     const fromKey = keyRef.current
+    const focusNow = focusRef.current
+    const zoomNow = zoomCountryRef.current
     stopInertia()
     const from = {
       ...viewRef.current,
       rotate: [...viewRef.current.rotate] as [number, number, number],
     }
-    const target = targetViewFor(sizeRef.current, focus, zoomCountry)
+    const target = targetViewFor(sizeRef.current, focusNow, zoomNow)
 
     const lonTurns = fromKey.startsWith('focus:all') || nextKey.startsWith('focus:all') ? 1.15 : 0.85
     const dLon = spinDelta(from.rotate[0], target.rotate[0], lonTurns)
@@ -339,7 +351,11 @@ export function WorldMap({
         animRef.current = requestAnimationFrame(tick)
       } else {
         animRef.current = null
-        const settled = targetViewFor(sizeRef.current, focus, zoomCountry)
+        const settled = targetViewFor(
+          sizeRef.current,
+          focusRef.current,
+          zoomCountryRef.current,
+        )
         commitView(settled)
         keyRef.current = nextKey
         setZooming(false)
@@ -354,12 +370,13 @@ export function WorldMap({
         cancelAnimationFrame(animRef.current)
         animRef.current = null
       }
+      setZooming(false)
     }
-  }, [focus, zoomCountry])
+  }, [focusKey])
 
   useEffect(() => {
     setUserZoom(1)
-  }, [focus, zoomCountry])
+  }, [focusKey])
 
   useEffect(() => {
     stopIdleSpin()
@@ -389,7 +406,7 @@ export function WorldMap({
 
     idleRef.current = requestAnimationFrame(tick)
     return () => stopIdleSpin()
-  }, [autoRotate, zooming, dragging, zoomCountry])
+  }, [autoRotate, zooming, dragging, focusKey])
 
   const startInertia = (vx: number, vy: number) => {
     stopInertia()
@@ -558,7 +575,6 @@ export function WorldMap({
             x: coords[0],
             y: coords[1],
             rank: c.properties.rank,
-            name: c.properties.name,
           }
         })
         .filter((m): m is NonNullable<typeof m> => m !== null),
@@ -747,12 +763,10 @@ export function WorldMap({
 
         {showCities ? (
           <g className="cities-layer">
-            {cityMarkers.map(({ id, x, y, rank, name }) => {
+            {cityMarkers.map(({ id, x, y, rank }) => {
               const isTarget = targetCityId === id
               const isWrong = wrongCityId === id
               const isHover = hovered === id && interactive && !dragging
-              const showName =
-                feedback !== 'idle' && (isTarget || isWrong)
 
               let className = 'city-marker'
               if (feedback === 'correct' && isTarget) className += ' is-correct'
@@ -774,12 +788,6 @@ export function WorldMap({
                   <text className="city-rank" textAnchor="middle" dy="0.35em">
                     {rank}
                   </text>
-                  {showName ? (
-                    <text className="city-label" textAnchor="middle" y={-16}>
-                      {name}
-                    </text>
-                  ) : null}
-                  <title>{name}</title>
                 </g>
               )
             })}

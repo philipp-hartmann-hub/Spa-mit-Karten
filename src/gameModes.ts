@@ -1,4 +1,4 @@
-export type GameMode = 'country' | 'capital' | 'flag' | 'regions' | 'cities'
+export type GameMode = 'country' | 'capital' | 'flag' | 'regions' | 'cities' | 'blitz'
 export type RegionQuiz = 'name' | 'capital' | 'flag'
 
 export const MODE_OPTIONS: {
@@ -36,6 +36,12 @@ export const MODE_OPTIONS: {
     label: 'Städte',
     shortLabel: 'Städte',
     hint: 'Wähle ein Land — die größten Städte erscheinen als Punkte, ordne den Namen zu.',
+  },
+  {
+    id: 'blitz',
+    label: 'Stadt-Land-Fluss',
+    shortLabel: 'Blitz',
+    hint: '30 Sekunden: zum Buchstaben ein Land und eine Hauptstadt finden — und ein Land mit der Flaggenfarbe.',
   },
 ]
 

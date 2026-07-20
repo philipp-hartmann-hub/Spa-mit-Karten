@@ -419,3 +419,52 @@ Nach **jedem** User-Prompt zwingend aktualisieren.
 **Status:** in Arbeit
 
 **Status:** erledigt — Remote origin gesetzt, main gepusht
+
+---
+
+## 2026-07-20 — Prompt 33
+
+**User:** Neuer Spielmodus wie Stadt-Land-Fluss: 30s, Buchstabe + Farbe — Land, Hauptstadt, Flaggenfarbe finden; mehrere Runden.
+
+**Aktion:**
+- Neuer Modus `blitz` („Stadt-Land-Fluss“) in Orbit/Setup/HUD
+- `src/flagColors.ts` mit Flaggenfarben, `src/blitz.ts` mit Matching & Challenge-Auswahl
+- 30s-Timer, drei Kategorien (Land / Hauptstadt / Flaggenfarbe), Punkt pro Treffer, automatische Folgerunden
+
+**Status:** erledigt
+
+---
+
+## 2026-07-20 — Prompt 34
+
+**User:** Die neue Runde soll nicht automatisch starten.
+
+**Aktion:**
+- Blitz-Modus: Auto-Start der Folgerunde entfernt
+- Button „Nächste Runde“ im HUD nach Rundenende
+
+**Status:** erledigt
+
+---
+
+## 2026-07-20 — Prompt 35
+
+**User:** Nach dem Auswählen manchmal metallisch-blauer Schleier über der Karte, wirkt wie Neu-Laden.
+
+**Aktion:**
+- Bugfix: Zoom-Schleier konnte nach abgebrochener Fokus-Animation hängen bleiben
+- Zoom-Effekt hängt jetzt an stabilem Fokus-Key; Cleanup setzt `zooming` zuverlässig zurück
+- Zoom-Schleier und Glow optisch deutlich abgeschwächt
+
+**Status:** erledigt
+
+---
+
+## 2026-07-20 — Prompt 36
+
+**User:** Bei den Städten soll beim Draufklicken der Stadtname nicht mehr erscheinen.
+
+**Aktion:**
+- Stadtname-Label und Tooltip auf den Stadtpunkten entfernt; Feedback bleibt nur über Farbe/HUD
+
+**Status:** erledigt

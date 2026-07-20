@@ -50,5 +50,13 @@ export function ModeIcon({ id, className }: Props) {
           <path d="M3 20h18" />
         </svg>
       )
+    case 'blitz':
+      return (
+        <svg {...common}>
+          <circle cx="12" cy="12" r="8.5" />
+          <path d="M12 7.5v5l3.2 2" />
+          <path d="M16.5 5.5 18 4M7.5 5.5 6 4" />
+        </svg>
+      )
   }
 }

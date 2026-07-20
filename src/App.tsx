@@ -39,6 +39,17 @@ import {
   type GameMode,
   type RegionQuiz,
 } from './gameModes'
+import {
+  BLITZ_SECONDS,
+  blitzComplete,
+  blitzFilledCount,
+  emptyBlitzAnswers,
+  matchBlitzCategory,
+  pickBlitzChallenge,
+  type BlitzAnswers,
+  type BlitzChallenge,
+} from './blitz'
+import { flagColorHex, flagColorLabel, flagColorsOf } from './flagColors'
 import { ModeIcon } from './ModeIcon'
 import './App.css'
 
@@ -74,14 +85,26 @@ export default function App() {
   const [streak, setStreak] = useState(0)
   const [round, setRound] = useState(0)
   const [message, setMessage] = useState('')
+  const [blitzChallenge, setBlitzChallenge] = useState<BlitzChallenge | null>(null)
+  const [blitzAnswers, setBlitzAnswers] = useState<BlitzAnswers>(emptyBlitzAnswers())
+  const [blitzSecondsLeft, setBlitzSecondsLeft] = useState(BLITZ_SECONDS)
   const roundTimer = useRef<number | null>(null)
+  const blitzInterval = useRef<number | null>(null)
   const modeRef = useRef<GameMode>(mode)
   const regionQuizRef = useRef<RegionQuiz>(regionQuiz)
+  const blitzAnswersRef = useRef(blitzAnswers)
 
   const clearRoundTimer = () => {
     if (roundTimer.current !== null) {
       window.clearTimeout(roundTimer.current)
       roundTimer.current = null
+    }
+  }
+
+  const clearBlitzInterval = () => {
+    if (blitzInterval.current !== null) {
+      window.clearInterval(blitzInterval.current)
+      blitzInterval.current = null
     }
   }
 
@@ -106,7 +129,13 @@ export default function App() {
       .catch((err) => console.error('Städte konnten nicht geladen werden', err))
   }, [])
 
-  useEffect(() => () => clearRoundTimer(), [])
+  useEffect(
+    () => () => {
+      clearRoundTimer()
+      clearBlitzInterval()
+    },
+    [],
+  )
 
   useEffect(() => {
     modeRef.current = mode
@@ -115,6 +144,10 @@ export default function App() {
   useEffect(() => {
     regionQuizRef.current = regionQuiz
   }, [regionQuiz])
+
+  useEffect(() => {
+    blitzAnswersRef.current = blitzAnswers
+  }, [blitzAnswers])
 
   const regionCountryIds = useMemo(
     () => new Set(regionReady ? countriesWithRegions() : []),
@@ -148,6 +181,12 @@ export default function App() {
     }
     if (mode === 'cities') {
       return byContinent.filter((c) => cityCountryIds.has(normalizeId(c.id)))
+    }
+    if (mode === 'blitz') {
+      return byContinent.filter((c) => {
+        const id = normalizeId(c.id)
+        return hasCapital(id) && flagColorsOf(id).length > 0
+      })
     }
     if (mode === 'regions') {
       const allowed =
@@ -204,10 +243,70 @@ export default function App() {
     return allCountries.find((c) => normalizeId(c.id) === regionCountryId) ?? null
   }, [allCountries, regionCountryId])
 
+  const finishBlitzRound = useCallback((reason: 'complete' | 'timeout') => {
+    clearBlitzInterval()
+    clearRoundTimer()
+    const filled = blitzFilledCount(blitzAnswersRef.current)
+    setFeedback(filled === 3 ? 'correct' : filled > 0 ? 'correct' : 'wrong')
+    setMessage(
+      reason === 'complete'
+        ? `Alles gefunden! ${filled}/3`
+        : filled > 0
+          ? `Zeit ab! ${filled}/3 gefunden`
+          : 'Zeit ab! Leider nichts gefunden',
+    )
+    if (filled === 3) {
+      setStreak((s) => s + 1)
+    } else if (reason === 'timeout' && filled === 0) {
+      setStreak(0)
+    }
+    setPhase('reveal')
+  }, [])
+
+  const startBlitzRound = useCallback(
+    (fromPool: CountryFeature[]) => {
+      if (fromPool.length === 0) return
+      clearRoundTimer()
+      clearBlitzInterval()
+      const challenge = pickBlitzChallenge(fromPool)
+      if (!challenge) {
+        setMessage('Für diesen Kontinent nicht genug passende Länder.')
+        setPhase('setup')
+        return
+      }
+
+      setZoomCountry(null)
+      setActiveRegions([])
+      setActiveCities([])
+      setTargetRegion(null)
+      setTargetCity(null)
+      setTarget(null)
+      setBlitzChallenge(challenge)
+      setBlitzAnswers(emptyBlitzAnswers())
+      blitzAnswersRef.current = emptyBlitzAnswers()
+      setBlitzSecondsLeft(BLITZ_SECONDS)
+      setFeedback('idle')
+      setWrongId(null)
+      setMessage('')
+      setPhase('playing')
+      setRound((r) => r + 1)
+
+      let remaining = BLITZ_SECONDS
+      blitzInterval.current = window.setInterval(() => {
+        remaining -= 1
+        setBlitzSecondsLeft(remaining)
+        if (remaining <= 0) {
+          finishBlitzRound('timeout')
+        }
+      }, 1000)
+    },
+    [finishBlitzRound],
+  )
   const startCountryRound = useCallback(
     (fromPool: CountryFeature[], previousId?: string | null) => {
       if (fromPool.length === 0) return
       clearRoundTimer()
+      clearBlitzInterval()
       const next = pickRandom(fromPool, previousId ? (c) => normalizeId(c.id) === previousId : null)
       setZoomCountry(null)
       setActiveRegions([])
@@ -215,6 +314,8 @@ export default function App() {
       setTargetRegion(null)
       setTargetCity(null)
       setTarget(next)
+      setBlitzChallenge(null)
+      setBlitzAnswers(emptyBlitzAnswers())
       setFeedback('idle')
       setWrongId(null)
       setMessage('')
@@ -230,6 +331,7 @@ export default function App() {
       const cities = citiesForCountry(countryId)
       if (cities.length === 0) return
       clearRoundTimer()
+      clearBlitzInterval()
       const city = pickRandom(
         cities,
         previousId ? (c) => c.properties.id === previousId : null,
@@ -240,6 +342,8 @@ export default function App() {
       setTarget(country)
       setTargetRegion(null)
       setTargetCity(city)
+      setBlitzChallenge(null)
+      setBlitzAnswers(emptyBlitzAnswers())
       setFeedback('idle')
       setWrongId(null)
       setMessage('')
@@ -263,6 +367,7 @@ export default function App() {
             : allRegions
       if (quizPool.length === 0) return
       clearRoundTimer()
+      clearBlitzInterval()
       const region = pickRandom(
         quizPool,
         previousId ? (r) => r.properties.id === previousId : null,
@@ -274,6 +379,8 @@ export default function App() {
       setTarget(country)
       setTargetRegion(region)
       setTargetCity(null)
+      setBlitzChallenge(null)
+      setBlitzAnswers(emptyBlitzAnswers())
       setFeedback('idle')
       setWrongId(null)
       setMessage('')
@@ -285,6 +392,10 @@ export default function App() {
 
   const startRound = useCallback(
     (fromPool: CountryFeature[], previousId?: string | null) => {
+      if (modeRef.current === 'blitz') {
+        startBlitzRound(fromPool)
+        return
+      }
       if (modeRef.current === 'regions' || modeRef.current === 'cities') {
         const country =
           fromPool.find((c) => normalizeId(c.id) === regionCountryId) ?? fromPool[0]
@@ -298,7 +409,7 @@ export default function App() {
         startCountryRound(fromPool, previousId)
       }
     },
-    [startCountryRound, startRegionRound, startCityRound, regionCountryId],
+    [startCountryRound, startRegionRound, startCityRound, startBlitzRound, regionCountryId],
   )
 
   const scheduleNextRound = (fromPool: CountryFeature[], previousId: string, delay: number) => {
@@ -323,6 +434,12 @@ export default function App() {
     if (nextMode === 'cities') {
       return byContinent.filter((c) => cityCountryIds.has(normalizeId(c.id)))
     }
+    if (nextMode === 'blitz') {
+      return byContinent.filter((c) => {
+        const id = normalizeId(c.id)
+        return hasCapital(id) && flagColorsOf(id).length > 0
+      })
+    }
     if (nextMode === 'regions') {
       const allowed =
         nextQuiz === 'capital'
@@ -337,12 +454,15 @@ export default function App() {
 
   const resetAndStart = (nextPool: CountryFeature[]) => {
     clearRoundTimer()
+    clearBlitzInterval()
     setScore(0)
     setStreak(0)
     setRound(0)
     setFeedback('idle')
     setWrongId(null)
     setMessage('')
+    setBlitzChallenge(null)
+    setBlitzAnswers(emptyBlitzAnswers())
     if (nextPool.length === 0) {
       setTarget(null)
       setTargetRegion(null)
@@ -360,6 +480,7 @@ export default function App() {
     if (pool.length === 0) return
     if (needsCountryPick && !selectedRegionCountry) return
     clearRoundTimer()
+    clearBlitzInterval()
     setScore(0)
     setStreak(0)
     setRound(0)
@@ -367,6 +488,7 @@ export default function App() {
   }
 
   const openSetup = (next: GameMode) => {
+    clearBlitzInterval()
     setMode(next)
     setZoomCountry(null)
     setActiveRegions([])
@@ -374,6 +496,8 @@ export default function App() {
     setTarget(null)
     setTargetRegion(null)
     setTargetCity(null)
+    setBlitzChallenge(null)
+    setBlitzAnswers(emptyBlitzAnswers())
     setFeedback('idle')
     setWrongId(null)
     setMessage('')
@@ -382,12 +506,15 @@ export default function App() {
 
   const backToIntro = () => {
     clearRoundTimer()
+    clearBlitzInterval()
     setZoomCountry(null)
     setActiveRegions([])
     setActiveCities([])
     setTarget(null)
     setTargetRegion(null)
     setTargetCity(null)
+    setBlitzChallenge(null)
+    setBlitzAnswers(emptyBlitzAnswers())
     setFeedback('idle')
     setWrongId(null)
     setMessage('')
@@ -437,6 +564,55 @@ export default function App() {
   const onSelect = (id: string) => {
     if (phase !== 'playing') return
     const currentMode = modeRef.current
+
+    if (currentMode === 'blitz') {
+      if (!blitzChallenge || !activeIds.has(id)) return
+      const feature = allCountries.find((c) => normalizeId(c.id) === id)
+      if (!feature) return
+
+      const alreadyUsed =
+        blitzAnswers.country === id ||
+        blitzAnswers.capital === id ||
+        blitzAnswers.flag === id
+      if (alreadyUsed) return
+
+      const category = matchBlitzCategory(feature, blitzChallenge, blitzAnswers)
+      if (!category) {
+        setFeedback('wrong')
+        setWrongId(id)
+        setStreak(0)
+        setMessage(`Passt nicht — ${countryLabel(feature)}`)
+        window.setTimeout(() => {
+          setFeedback('idle')
+          setWrongId(null)
+          setMessage('')
+        }, 900)
+        return
+      }
+
+      const nextAnswers = { ...blitzAnswers, [category]: id }
+      setBlitzAnswers(nextAnswers)
+      blitzAnswersRef.current = nextAnswers
+      setFeedback('correct')
+      setWrongId(null)
+      setScore((s) => s + 1)
+      const labels = {
+        country: 'Land',
+        capital: 'Hauptstadt',
+        flag: 'Flagge',
+      } as const
+      setMessage(`${labels[category]}: ${countryLabel(feature)}`)
+
+      if (blitzComplete(nextAnswers)) {
+        finishBlitzRound('complete')
+      } else {
+        window.setTimeout(() => {
+          setFeedback('idle')
+          setMessage('')
+        }, 700)
+      }
+      return
+    }
 
     if (currentMode === 'cities') {
       if (!targetCity || !target) return
@@ -587,35 +763,45 @@ export default function App() {
       ? countryFlagUrl(targetId)
       : null
 
+  const blitzSlotLabel = (id: string | null) => {
+    if (!id) return '—'
+    const feature = allCountries.find((c) => normalizeId(c.id) === id)
+    return feature ? countryLabel(feature) : '—'
+  }
+
   const promptLabel =
-    mode === 'capital'
-      ? 'Hauptstadt von welchem Land?'
-      : mode === 'flag'
-        ? 'Welche Flagge ist das?'
-        : mode === 'cities'
-          ? `Wo liegt in ${targetCountry || '…'}?`
-          : mode === 'regions'
-            ? regionQuiz === 'capital'
-              ? `Hauptstadt in ${targetCountry || '…'}?`
-              : regionQuiz === 'flag'
-                ? `Welche Flagge in ${targetCountry || '…'}?`
-                : `Finde in ${targetCountry || '…'}`
-            : 'Finde'
+    mode === 'blitz'
+      ? 'Finde auf der Karte'
+      : mode === 'capital'
+        ? 'Hauptstadt von welchem Land?'
+        : mode === 'flag'
+          ? 'Welche Flagge ist das?'
+          : mode === 'cities'
+            ? `Wo liegt in ${targetCountry || '…'}?`
+            : mode === 'regions'
+              ? regionQuiz === 'capital'
+                ? `Hauptstadt in ${targetCountry || '…'}?`
+                : regionQuiz === 'flag'
+                  ? `Welche Flagge in ${targetCountry || '…'}?`
+                  : `Finde in ${targetCountry || '…'}`
+              : 'Finde'
 
   const promptValue =
-    mode === 'capital'
-      ? (targetCapital ?? targetCountry)
-      : mode === 'flag'
-        ? null
-        : mode === 'cities'
-          ? targetCityName
-          : mode === 'regions'
-            ? regionQuiz === 'capital'
-              ? (targetRegionCapital ?? targetRegionName)
-              : regionQuiz === 'flag'
-                ? null
-                : targetRegionName
-            : targetCountry
+    mode === 'blitz'
+      ? null
+      : mode === 'capital'
+        ? (targetCapital ?? targetCountry)
+        : mode === 'flag'
+          ? null
+          : mode === 'cities'
+            ? targetCityName
+            : mode === 'regions'
+              ? regionQuiz === 'capital'
+                ? (targetRegionCapital ?? targetRegionName)
+                : regionQuiz === 'flag'
+                  ? null
+                  : targetRegionName
+              : targetCountry
 
   const continentLabel =
     CONTINENT_OPTIONS.find((o) => o.id === continent)?.label ?? 'Welt'
@@ -701,6 +887,14 @@ export default function App() {
           </button>
           <h1 className="setup-title">{modeMeta.label}</h1>
           <p className="setup-hint">{modeMeta.hint}</p>
+
+          {mode === 'blitz' ? (
+            <ul className="blitz-rules">
+              <li>Land, das mit dem Buchstaben beginnt</li>
+              <li>Land, dessen Hauptstadt mit dem Buchstaben beginnt</li>
+              <li>Land, dessen Flagge die Farbe enthält</li>
+            </ul>
+          ) : null}
 
           {regionQuizPicker}
 
@@ -800,7 +994,48 @@ export default function App() {
           </div>
           <div className="hud-prompt">
             <span className="prompt-label">{promptLabel}</span>
-            {promptFlagUrl ? (
+            {mode === 'blitz' && blitzChallenge ? (
+              <>
+                <div className="blitz-prompt">
+                  <span className="blitz-letter" aria-label={`Buchstabe ${blitzChallenge.letter}`}>
+                    {blitzChallenge.letter}
+                  </span>
+                  <span className="blitz-color">
+                    <span
+                      className={`blitz-swatch is-${blitzChallenge.color}`}
+                      style={{ background: flagColorHex(blitzChallenge.color) }}
+                      aria-hidden
+                    />
+                    {flagColorLabel(blitzChallenge.color)}
+                  </span>
+                  <span
+                    className={`blitz-timer ${blitzSecondsLeft <= 5 ? 'is-urgent' : ''}`}
+                    aria-label={`${blitzSecondsLeft} Sekunden`}
+                  >
+                    {blitzSecondsLeft}s
+                  </span>
+                </div>
+                <div className="blitz-slots" aria-label="Gefundene Antworten">
+                  {(
+                    [
+                      ['country', 'Land', blitzAnswers.country],
+                      ['capital', 'Hauptstadt', blitzAnswers.capital],
+                      ['flag', 'Flagge', blitzAnswers.flag],
+                    ] as const
+                  ).map(([key, label, value]) => (
+                    <div
+                      key={key}
+                      className={`blitz-slot ${value ? 'is-filled' : ''}`}
+                    >
+                      <span className="blitz-slot-label">{label}</span>
+                      <span className={`blitz-slot-value ${value ? '' : 'is-empty'}`}>
+                        {blitzSlotLabel(value)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : promptFlagUrl ? (
               <div className="prompt-flag-wrap">
                 <img
                   key={promptFlagUrl}
@@ -816,6 +1051,15 @@ export default function App() {
               <h2 className="prompt-country">…</h2>
             )}
             {message ? <p className={`prompt-feedback is-${feedback}`}>{message}</p> : null}
+            {mode === 'blitz' && phase === 'reveal' ? (
+              <button
+                type="button"
+                className="cta blitz-next"
+                onClick={() => startBlitzRound(pool)}
+              >
+                Nächste Runde
+              </button>
+            ) : null}
           </div>
           <div className="hud-stats" aria-label="Spielstand">
             <div>
