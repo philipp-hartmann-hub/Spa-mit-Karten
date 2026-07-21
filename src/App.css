@@ -1199,6 +1199,13 @@ button {
   z-index: 1;
 }
 
+.home-hero,
+.home-actions,
+.home-join-banner {
+  position: relative;
+  z-index: 1;
+}
+
 .home-hero {
   text-align: center;
   margin-bottom: 1.75rem;
@@ -1272,6 +1279,7 @@ button {
 
 .mp-lobby {
   position: relative;
+  z-index: 1;
   max-width: 26rem;
   margin: 0 auto;
   padding: 1.25rem 1.25rem 2.5rem;

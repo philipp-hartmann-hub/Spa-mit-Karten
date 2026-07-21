@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Peer, type DataConnection } from 'peerjs'
+import Peer, { type DataConnection } from 'peerjs'
 import {
   createPlayerId,
   MP_MAX_PLAYERS,

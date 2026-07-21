@@ -566,6 +566,18 @@ Nach **jedem** User-Prompt zwingend aktualisieren.
 
 ---
 
+## 2026-07-21 — Prompt 45
+
+**User:** Beim Neuladen kommt eine leere Seite statt der Startseite.
+
+**Aktion:**
+- Home/MP-UI über Atmosphere-Schleier gelegt (z-index)
+- PeerJS-Import und Lazy-Load für Multiplayer abgesichert; Reload landet wieder auf Start
+
+**Status:** erledigt
+
+---
+
 ## 2026-07-21 — Prompt 41
 
 **User:** App.tsx auf i18n-System umstellen (`useLocale`, `t()`, LanguagePicker, locale an Label-/Blitz-Helfer)
