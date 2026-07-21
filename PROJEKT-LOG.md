@@ -590,6 +590,19 @@ Nach **jedem** User-Prompt zwingend aktualisieren.
 
 ---
 
+## 2026-07-21 — Prompt 47
+
+**User:** MP ohne Wiederholungen; bei Fehler keine Orangefärbung der Lösung; Städte = Land wählen und alle Städte durchspielen; deployen.
+
+**Aktion:**
+- Fragen ohne Wiederholung (solange Pool reicht); Städte-MP: alle Städte eines Lands, keine Rundenzahl
+- Falschantwort markiert nur den Klick, nicht die Lösung
+- Nach `origin/main` gepusht
+
+**Status:** erledigt
+
+---
+
 ## 2026-07-21 — Prompt 41
 
 **User:** App.tsx auf i18n-System umstellen (`useLocale`, `t()`, LanguagePicker, locale an Label-/Blitz-Helfer)

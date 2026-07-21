@@ -145,6 +145,7 @@ const UI_DE = {
   mpPointsValue: '{n} Pkt.',
   mpTimeValue: '{s}s',
   mpLastRoundPts: '+{n} in der letzten Runde',
+  mpCitiesRules: 'Wähle ein Land — alle Städte werden einmal durchgespielt. Wer zuerst fertig ist, gewinnt.',
 } as const
 
 const UI_EN: Record<UiKey, string> = {
@@ -290,6 +291,7 @@ const UI_EN: Record<UiKey, string> = {
   mpPointsValue: '{n} pts',
   mpTimeValue: '{s}s',
   mpLastRoundPts: '+{n} last round',
+  mpCitiesRules: 'Pick a country — all its cities are played once. Fastest finish wins.',
 }
 
 const UI_FR: Record<UiKey, string> = {
@@ -435,6 +437,7 @@ const UI_FR: Record<UiKey, string> = {
   mpPointsValue: '{n} pts',
   mpTimeValue: '{s}s',
   mpLastRoundPts: '+{n} dernière manche',
+  mpCitiesRules: 'Choisis un pays — toutes ses villes sont jouées une fois. Le plus rapide gagne.',
 }
 
 // Fix German back button - I accidentally put English in UI_DE.backModes

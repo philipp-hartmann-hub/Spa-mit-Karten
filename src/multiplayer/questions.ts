@@ -1,8 +1,7 @@
-import { capitalOf, hasCapital } from '../capitals'
+import { hasCapital } from '../capitals'
 import { pickBlitzChallenge } from '../blitz'
-import { hasCountryFlag } from '../flags'
+import { hasCountryFlag, hasRegionFlag } from '../flags'
 import { hasRegionCapital } from '../regionCapitals'
-import { hasRegionFlag } from '../flags'
 import {
   countriesWithRegionCapitals,
   countriesWithRegions,
@@ -15,11 +14,39 @@ import { matchesContinent, type ContinentFilter } from '../continents'
 import type { GameMode, RegionQuiz } from '../gameModes'
 import type { Locale } from '../i18n/types'
 import { flagColorsOf } from '../flagColors'
-import { countryLabel, normalizeId, type CountryFeature } from '../WorldMap'
+import { normalizeId, type CountryFeature } from '../WorldMap'
 import type { MpBlitzQuestion, MpGameConfig, MpRaceQuestion } from './types'
+
+function shuffle<T>(items: T[]): T[] {
+  const a = [...items]
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[a[i], a[j]] = [a[j]!, a[i]!]
+  }
+  return a
+}
 
 function pickRandom<T>(pool: T[]): T {
   return pool[Math.floor(Math.random() * pool.length)]!
+}
+
+/** Ziehe `count` Elemente ohne Wiederholung, solange der Pool reicht; danach ggf. mit Wiederholung. */
+function takeUniqueThenFill<T>(pool: T[], count: number, keyOf: (item: T) => string): T[] {
+  if (pool.length === 0 || count <= 0) return []
+  const shuffled = shuffle(pool)
+  const out: T[] = []
+  const used = new Set<string>()
+  for (const item of shuffled) {
+    if (out.length >= count) break
+    const k = keyOf(item)
+    if (used.has(k)) continue
+    used.add(k)
+    out.push(item)
+  }
+  while (out.length < count) {
+    out.push(pickRandom(pool))
+  }
+  return out
 }
 
 function buildPool(
@@ -81,52 +108,53 @@ export function generateRaceQuestions(
   )
   if (pool.length === 0) return []
 
-  const questions: MpRaceQuestion[] = []
   const mode = config.mode
 
-  for (let i = 0; i < config.rounds; i++) {
-    if (mode === 'regions') {
-      const country =
-        pool.find((c) => normalizeId(c.id) === config.regionCountryId) ?? pickRandom(pool)
-      const countryId = normalizeId(country.id)
-      const quiz = (config.regionQuiz ?? 'name') as RegionQuiz
-      const allRegions = regionsForCountry(countryId)
-      const quizPool =
-        quiz === 'capital'
-          ? regionsWithCapitals(countryId, hasRegionCapital)
-          : quiz === 'flag'
-            ? regionsWithCapitals(countryId, hasRegionFlag)
-            : allRegions
-      if (quizPool.length === 0) continue
-      const region = pickRandom(quizPool) as RegionFeature
-      questions.push({
-        kind: 'region',
-        countryId,
-        regionId: region.properties.id,
-        quiz,
-      })
-      continue
-    }
-
-    if (mode === 'cities') {
-      const country =
-        pool.find((c) => normalizeId(c.id) === config.regionCountryId) ?? pickRandom(pool)
-      const countryId = normalizeId(country.id)
-      const cities = citiesForCountry(countryId)
-      if (cities.length === 0) continue
-      const city = pickRandom(cities) as CityFeature
-      questions.push({ kind: 'city', countryId, cityId: city.properties.id })
-      continue
-    }
-
-    const country = pickRandom(pool)
-    const id = normalizeId(country.id)
-    if (mode === 'capital') questions.push({ kind: 'capital', targetId: id })
-    else if (mode === 'flag') questions.push({ kind: 'flag', targetId: id })
-    else questions.push({ kind: 'country', targetId: id })
+  if (mode === 'cities') {
+    const country =
+      pool.find((c) => normalizeId(c.id) === config.regionCountryId) ?? pickRandom(pool)
+    const countryId = normalizeId(country.id)
+    const cities = shuffle(citiesForCountry(countryId)) as CityFeature[]
+    return cities.map((city) => ({
+      kind: 'city' as const,
+      countryId,
+      cityId: city.properties.id,
+    }))
   }
 
-  return questions
+  if (mode === 'regions') {
+    const country =
+      pool.find((c) => normalizeId(c.id) === config.regionCountryId) ?? pickRandom(pool)
+    const countryId = normalizeId(country.id)
+    const quiz = (config.regionQuiz ?? 'name') as RegionQuiz
+    const allRegions = regionsForCountry(countryId)
+    const quizPool =
+      quiz === 'capital'
+        ? regionsWithCapitals(countryId, hasRegionCapital)
+        : quiz === 'flag'
+          ? regionsWithCapitals(countryId, hasRegionFlag)
+          : allRegions
+    if (quizPool.length === 0) return []
+    const picked = takeUniqueThenFill(
+      quizPool as RegionFeature[],
+      config.rounds,
+      (r) => r.properties.id,
+    )
+    return picked.map((region) => ({
+      kind: 'region' as const,
+      countryId,
+      regionId: region.properties.id,
+      quiz,
+    }))
+  }
+
+  const picked = takeUniqueThenFill(pool, config.rounds, (c) => normalizeId(c.id))
+  return picked.map((country) => {
+    const id = normalizeId(country.id)
+    if (mode === 'capital') return { kind: 'capital' as const, targetId: id }
+    if (mode === 'flag') return { kind: 'flag' as const, targetId: id }
+    return { kind: 'country' as const, targetId: id }
+  })
 }
 
 export function generateBlitzQuestions(
@@ -143,11 +171,24 @@ export function generateBlitzQuestions(
   )
   const locale = (config.locale as Locale) || 'de'
   const out: MpBlitzQuestion[] = []
-  for (let i = 0; i < config.rounds; i++) {
-    const challenge = pickBlitzChallenge(pool, locale)
-    if (!challenge) break
-    out.push({ letter: challenge.letter, color: challenge.color })
+  const used = new Set<string>()
+  let guard = 0
+
+  while (out.length < config.rounds && guard++ < config.rounds * 60) {
+    const next = pickBlitzChallenge(pool, locale)
+    if (!next) break
+    const key = `${next.letter}|${next.color}`
+    if (used.has(key)) continue
+    used.add(key)
+    out.push({ letter: next.letter, color: next.color })
   }
+
+  while (out.length < config.rounds) {
+    const next = pickBlitzChallenge(pool, locale)
+    if (!next) break
+    out.push({ letter: next.letter, color: next.color })
+  }
+
   return out
 }
 
@@ -177,34 +218,4 @@ export function scoreBlitzRound(
     }
   }
   return points
-}
-
-export function describeRaceTarget(
-  q: MpRaceQuestion,
-  allCountries: CountryFeature[],
-  locale: Locale,
-): { promptLabelKey: string; promptValue: string | null; flagUrl: string | null } {
-  if (q.kind === 'country') {
-    const f = allCountries.find((c) => normalizeId(c.id) === q.targetId)
-    return {
-      promptLabelKey: 'promptFind',
-      promptValue: f ? countryLabel(f, locale) : '…',
-      flagUrl: null,
-    }
-  }
-  if (q.kind === 'capital') {
-    return {
-      promptLabelKey: 'promptCapital',
-      promptValue: capitalOf(q.targetId, locale) ?? '…',
-      flagUrl: null,
-    }
-  }
-  if (q.kind === 'flag') {
-    return {
-      promptLabelKey: 'promptFlag',
-      promptValue: null,
-      flagUrl: hasCountryFlag(q.targetId) ? `/flags unused` : null,
-    }
-  }
-  return { promptLabelKey: 'promptFind', promptValue: '…', flagUrl: null }
 }

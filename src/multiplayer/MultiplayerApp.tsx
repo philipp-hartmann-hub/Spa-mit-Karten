@@ -18,13 +18,14 @@ import {
 import { capitalOf } from '../capitals'
 import { countryFlagUrl } from '../flags'
 import { regionCapitalOf } from '../regionCapitals'
+import { cityLabel, citiesForCountry, countriesWithCities, loadCities, type CityFeature } from '../cities'
 import {
   loadRegions,
   regionLabel,
   regionsForCountry,
+  countriesWithRegions,
   type RegionFeature,
 } from '../admin1'
-import { cityLabel, citiesForCountry, loadCities, type CityFeature } from '../cities'
 import {
   MODE_OPTIONS,
   MODE_UI_KEYS,
@@ -468,7 +469,8 @@ export function MultiplayerApp({ role, initialCode, onExit }: Props) {
     }
 
     if (!correct) {
-      setFeedback('wrong')
+      // Nur falschen Klick markieren — Lösung nicht orange freigeben
+      setFeedback('idle')
       setWrongId(id)
       setMessage(t('mpKeepTrying'))
       return
@@ -506,10 +508,29 @@ export function MultiplayerApp({ role, initialCode, onExit }: Props) {
     (mode === 'regions' && !regionReady) || (mode === 'cities' && !citiesReady)
 
   const regionCountryOptions = useMemo(() => {
+    const cityIds = new Set(citiesReady ? countriesWithCities(3) : [])
+    const regionIds = new Set(regionReady ? countriesWithRegions() : [])
     return allCountries
+      .filter((c) => {
+        const id = normalizeId(c.id)
+        if (mode === 'cities') return cityIds.has(id)
+        if (mode === 'regions') return regionIds.has(id)
+        return true
+      })
       .map((c) => ({ id: normalizeId(c.id), label: countryLabel(c, locale) }))
       .sort((a, b) => a.label.localeCompare(b.label, locale))
-  }, [allCountries, locale])
+  }, [allCountries, locale, mode, citiesReady, regionReady])
+
+  useEffect(() => {
+    if (!needsCountryPick) return
+    if (regionCountryOptions.length === 0) {
+      if (regionCountryId) setRegionCountryId('')
+      return
+    }
+    if (!regionCountryOptions.some((o) => o.id === regionCountryId)) {
+      setRegionCountryId(regionCountryOptions[0]!.id)
+    }
+  }, [needsCountryPick, regionCountryOptions, regionCountryId])
 
   const targetId = target ? normalizeId(target.id) : null
   const promptFlagUrl =
@@ -702,27 +723,33 @@ export function MultiplayerApp({ role, initialCode, onExit }: Props) {
                 </label>
               ) : null}
 
-              <label className="filter">
-                <span className="filter-label">{t('mpRounds')}</span>
-                <input
-                  className="filter-select"
-                  type="number"
-                  min={MP_MIN_ROUNDS}
-                  max={MP_MAX_ROUNDS}
-                  value={rounds}
-                  onChange={(e) =>
-                    setRounds(
-                      Math.min(
-                        MP_MAX_ROUNDS,
-                        Math.max(MP_MIN_ROUNDS, Number(e.target.value) || MP_DEFAULT_ROUNDS),
-                      ),
-                    )
-                  }
-                />
-              </label>
+              {mode !== 'cities' ? (
+                <label className="filter">
+                  <span className="filter-label">{t('mpRounds')}</span>
+                  <input
+                    className="filter-select"
+                    type="number"
+                    min={MP_MIN_ROUNDS}
+                    max={MP_MAX_ROUNDS}
+                    value={rounds}
+                    onChange={(e) =>
+                      setRounds(
+                        Math.min(
+                          MP_MAX_ROUNDS,
+                          Math.max(MP_MIN_ROUNDS, Number(e.target.value) || MP_DEFAULT_ROUNDS),
+                        ),
+                      )
+                    }
+                  />
+                </label>
+              ) : null}
 
               <p className="setup-hint">
-                {mode === 'blitz' ? t('mpBlitzRules') : t('mpRaceRules')}
+                {mode === 'blitz'
+                  ? t('mpBlitzRules')
+                  : mode === 'cities'
+                    ? t('mpCitiesRules')
+                    : t('mpRaceRules')}
               </p>
 
               <button
