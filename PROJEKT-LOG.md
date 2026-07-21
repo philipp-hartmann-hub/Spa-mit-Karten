@@ -578,6 +578,18 @@ Nach **jedem** User-Prompt zwingend aktualisieren.
 
 ---
 
+## 2026-07-21 — Prompt 46
+
+**User:** Auf der Startseite die drehende Weltkugel; bitte gleich deployen.
+
+**Aktion:**
+- Startseite mit auto-rotierendem Globus und Orbit-Wahl Single/Multi
+- Nach `origin/main` gepusht (Vercel-Deploy)
+
+**Status:** erledigt
+
+---
+
 ## 2026-07-21 — Prompt 41
 
 **User:** App.tsx auf i18n-System umstellen (`useLocale`, `t()`, LanguagePicker, locale an Label-/Blitz-Helfer)

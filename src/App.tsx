@@ -43,7 +43,7 @@ export default function App() {
 
   if (screen.kind === 'multi') {
     return (
-      <Suspense fallback={<div className="home"><p className="home-lead">…</p></div>}>
+      <Suspense fallback={<div className="app app-intro"><p className="home-lead">…</p></div>}>
         <MultiplayerApp
           role={screen.role}
           initialCode={screen.code}
