@@ -11,6 +11,7 @@ import type { FeatureCollection, Geometry } from 'geojson'
 import type { Topology, GeometryCollection } from 'topojson-specification'
 import {
   CONTINENT_OPTIONS,
+  CONTINENT_UI_KEYS,
   matchesContinent,
   type ContinentFilter,
 } from './continents'
@@ -35,7 +36,9 @@ import {
 } from './cities'
 import {
   MODE_OPTIONS,
+  MODE_UI_KEYS,
   REGION_QUIZ_OPTIONS,
+  REGION_QUIZ_UI_KEYS,
   type GameMode,
   type RegionQuiz,
 } from './gameModes'
@@ -49,8 +52,9 @@ import {
   type BlitzAnswers,
   type BlitzChallenge,
 } from './blitz'
-import { flagColorHex, flagColorLabel, flagColorsOf } from './flagColors'
+import { flagColorHex, flagColorLabelKey, flagColorsOf } from './flagColors'
 import { ModeIcon } from './ModeIcon'
+import { LanguagePicker, useLocale } from './i18n'
 import './App.css'
 
 type Phase = 'intro' | 'setup' | 'playing' | 'reveal'
@@ -65,6 +69,7 @@ function pickRandom<T>(pool: T[], exclude?: ((item: T) => boolean) | null): T {
 }
 
 export default function App() {
+  const { locale, t } = useLocale()
   const [phase, setPhase] = useState<Phase>('intro')
   const [mode, setMode] = useState<GameMode>('country')
   const [allCountries, setAllCountries] = useState<CountryFeature[]>([])
@@ -213,11 +218,11 @@ export default function App() {
     return [...pool]
       .map((c) => ({
         id: normalizeId(c.id),
-        label: countryLabel(c),
+        label: countryLabel(c, locale),
         feature: c,
       }))
-      .sort((a, b) => a.label.localeCompare(b.label, 'de'))
-  }, [pool])
+      .sort((a, b) => a.label.localeCompare(b.label, locale))
+  }, [pool, locale])
 
   const needsCountryPick = mode === 'regions' || mode === 'cities'
 
@@ -243,34 +248,37 @@ export default function App() {
     return allCountries.find((c) => normalizeId(c.id) === regionCountryId) ?? null
   }, [allCountries, regionCountryId])
 
-  const finishBlitzRound = useCallback((reason: 'complete' | 'timeout') => {
-    clearBlitzInterval()
-    clearRoundTimer()
-    const filled = blitzFilledCount(blitzAnswersRef.current)
-    setFeedback(filled === 3 ? 'correct' : filled > 0 ? 'correct' : 'wrong')
-    setMessage(
-      reason === 'complete'
-        ? `Alles gefunden! ${filled}/3`
-        : filled > 0
-          ? `Zeit ab! ${filled}/3 gefunden`
-          : 'Zeit ab! Leider nichts gefunden',
-    )
-    if (filled === 3) {
-      setStreak((s) => s + 1)
-    } else if (reason === 'timeout' && filled === 0) {
-      setStreak(0)
-    }
-    setPhase('reveal')
-  }, [])
+  const finishBlitzRound = useCallback(
+    (reason: 'complete' | 'timeout') => {
+      clearBlitzInterval()
+      clearRoundTimer()
+      const filled = blitzFilledCount(blitzAnswersRef.current)
+      setFeedback(filled === 3 ? 'correct' : filled > 0 ? 'correct' : 'wrong')
+      setMessage(
+        reason === 'complete'
+          ? t('blitzAllFound', { n: filled })
+          : filled > 0
+            ? t('blitzTimePartial', { n: filled })
+            : t('blitzTimeNone'),
+      )
+      if (filled === 3) {
+        setStreak((s) => s + 1)
+      } else if (reason === 'timeout' && filled === 0) {
+        setStreak(0)
+      }
+      setPhase('reveal')
+    },
+    [t],
+  )
 
   const startBlitzRound = useCallback(
     (fromPool: CountryFeature[]) => {
       if (fromPool.length === 0) return
       clearRoundTimer()
       clearBlitzInterval()
-      const challenge = pickBlitzChallenge(fromPool)
+      const challenge = pickBlitzChallenge(fromPool, locale)
       if (!challenge) {
-        setMessage('Für diesen Kontinent nicht genug passende Länder.')
+        setMessage(t('blitzNotEnough'))
         setPhase('setup')
         return
       }
@@ -300,7 +308,7 @@ export default function App() {
         }
       }, 1000)
     },
-    [finishBlitzRound],
+    [finishBlitzRound, locale, t],
   )
   const startCountryRound = useCallback(
     (fromPool: CountryFeature[], previousId?: string | null) => {
@@ -576,12 +584,12 @@ export default function App() {
         blitzAnswers.flag === id
       if (alreadyUsed) return
 
-      const category = matchBlitzCategory(feature, blitzChallenge, blitzAnswers)
+      const category = matchBlitzCategory(feature, blitzChallenge, blitzAnswers, locale)
       if (!category) {
         setFeedback('wrong')
         setWrongId(id)
         setStreak(0)
-        setMessage(`Passt nicht — ${countryLabel(feature)}`)
+        setMessage(t('blitzNoMatch', { name: countryLabel(feature, locale) }))
         window.setTimeout(() => {
           setFeedback('idle')
           setWrongId(null)
@@ -596,12 +604,18 @@ export default function App() {
       setFeedback('correct')
       setWrongId(null)
       setScore((s) => s + 1)
-      const labels = {
-        country: 'Land',
-        capital: 'Hauptstadt',
-        flag: 'Flagge',
-      } as const
-      setMessage(`${labels[category]}: ${countryLabel(feature)}`)
+      const categoryKey =
+        category === 'country'
+          ? 'slotCountry'
+          : category === 'capital'
+            ? 'slotCapital'
+            : 'slotFlag'
+      setMessage(
+        t('blitzHit', {
+          category: t(categoryKey),
+          name: countryLabel(feature, locale),
+        }),
+      )
 
       if (blitzComplete(nextAnswers)) {
         finishBlitzRound('complete')
@@ -617,14 +631,14 @@ export default function App() {
     if (currentMode === 'cities') {
       if (!targetCity || !target) return
       const targetCityId = targetCity.properties.id
-      const countryName = countryLabel(target)
+      const countryName = countryLabel(target, locale)
       const targetName = cityLabel(targetCity)
 
       if (id === targetCityId) {
         setFeedback('correct')
         setScore((s) => s + 1)
         setStreak((s) => s + 1)
-        setMessage(`Treffer! ${targetName} (${countryName})`)
+        setMessage(t('hitCity', { city: targetName, country: countryName }))
         setPhase('reveal')
         scheduleNextRound(pool, targetCityId, 1200)
         return
@@ -636,8 +650,8 @@ export default function App() {
       setStreak(0)
       setMessage(
         clicked
-          ? `Das war ${cityLabel(clicked)} — gesucht: ${targetName}`
-          : `Leider daneben — gesucht: ${targetName}`,
+          ? t('wrongCity', { clicked: cityLabel(clicked), target: targetName })
+          : t('wrongCityMiss', { target: targetName }),
       )
       setPhase('reveal')
       scheduleNextRound(pool, targetCityId, 2000)
@@ -647,7 +661,7 @@ export default function App() {
     if (currentMode === 'regions') {
       if (!targetRegion || !target) return
       const targetRegionId = targetRegion.properties.id
-      const countryName = countryLabel(target)
+      const countryName = countryLabel(target, locale)
       const quiz = regionQuizRef.current
       const targetCap = regionCapitalOf(targetRegionId)
       const targetName = regionLabel(targetRegion)
@@ -658,8 +672,12 @@ export default function App() {
         setStreak((s) => s + 1)
         setMessage(
           quiz === 'capital' && targetCap
-            ? `Treffer! ${targetCap} → ${targetName} (${countryName})`
-            : `Treffer! ${targetName} (${countryName})`,
+            ? t('hitRegionCapital', {
+                capital: targetCap,
+                region: targetName,
+                country: countryName,
+              })
+            : t('hitRegion', { region: targetName, country: countryName }),
         )
         setPhase('reveal')
         scheduleNextRound(pool, targetRegionId, 1200)
@@ -675,14 +693,25 @@ export default function App() {
       if (quiz === 'capital' && targetCap) {
         setMessage(
           clicked
-            ? `Das war ${regionLabel(clicked)}${clickedCap ? ` (${clickedCap})` : ''} — gesucht: ${targetCap} → ${targetName}`
-            : `Leider daneben — gesucht: ${targetCap} → ${targetName}`,
+            ? t('wrongRegionCapital', {
+                clicked: regionLabel(clicked),
+                clickedCap: clickedCap ? ` (${clickedCap})` : '',
+                capital: targetCap,
+                region: targetName,
+              })
+            : t('wrongRegionMissCapital', {
+                capital: targetCap,
+                region: targetName,
+              }),
         )
       } else {
         setMessage(
           clicked
-            ? `Das war ${regionLabel(clicked)} — gesucht: ${targetName}`
-            : `Leider daneben — gesucht: ${targetName}`,
+            ? t('wrongRegion', {
+                clicked: regionLabel(clicked),
+                target: targetName,
+              })
+            : t('wrongRegionMiss', { target: targetName }),
         )
       }
       setPhase('reveal')
@@ -694,8 +723,8 @@ export default function App() {
     if (!activeIds.has(id)) return
 
     const targetId = normalizeId(target.id)
-    const targetCapital = capitalOf(targetId)
-    const targetCountry = countryLabel(target)
+    const targetCapital = capitalOf(targetId, locale)
+    const targetCountry = countryLabel(target, locale)
 
     if (id === targetId) {
       setFeedback('correct')
@@ -703,10 +732,10 @@ export default function App() {
       setStreak((s) => s + 1)
       setMessage(
         currentMode === 'capital' && targetCapital
-          ? `Treffer! ${targetCapital} → ${targetCountry}`
+          ? t('hitCapital', { capital: targetCapital, country: targetCountry })
           : currentMode === 'flag'
-            ? `Treffer! ${targetCountry}`
-            : 'Treffer!',
+            ? t('hitFlag', { country: targetCountry })
+            : t('hit'),
       )
       setPhase('reveal')
       scheduleNextRound(pool, targetId, 1100)
@@ -714,8 +743,8 @@ export default function App() {
     }
 
     const clicked = allCountries.find((c) => normalizeId(c.id) === id)
-    const clickedLabel = clicked ? countryLabel(clicked) : null
-    const clickedCapital = clicked ? capitalOf(normalizeId(clicked.id)) : null
+    const clickedLabel = clicked ? countryLabel(clicked, locale) : null
+    const clickedCapital = clicked ? capitalOf(normalizeId(clicked.id), locale) : null
 
     setFeedback('wrong')
     setWrongId(id)
@@ -724,20 +753,28 @@ export default function App() {
     if (currentMode === 'capital' && targetCapital) {
       setMessage(
         clickedLabel
-          ? `Das war ${clickedLabel}${clickedCapital ? ` (${clickedCapital})` : ''} — gesucht: ${targetCapital} → ${targetCountry}`
-          : `Leider daneben — gesucht: ${targetCapital} → ${targetCountry}`,
+          ? t('wrongCountryCapital', {
+              clicked: clickedLabel,
+              clickedCap: clickedCapital ? ` (${clickedCapital})` : '',
+              capital: targetCapital,
+              country: targetCountry,
+            })
+          : t('wrongMissCapital', {
+              capital: targetCapital,
+              country: targetCountry,
+            }),
       )
     } else if (currentMode === 'flag') {
       setMessage(
         clickedLabel
-          ? `Das war ${clickedLabel} — gesucht: ${targetCountry}`
-          : `Leider daneben — gesucht: ${targetCountry}`,
+          ? t('wrongCountry', { clicked: clickedLabel, target: targetCountry })
+          : t('wrongMiss', { target: targetCountry }),
       )
     } else {
       setMessage(
         clickedLabel
-          ? `Das war ${clickedLabel} — gesucht: ${targetCountry}`
-          : `Leider daneben — gesucht: ${targetCountry}`,
+          ? t('wrongCountry', { clicked: clickedLabel, target: targetCountry })
+          : t('wrongMiss', { target: targetCountry }),
       )
     }
 
@@ -746,8 +783,8 @@ export default function App() {
   }
 
   const targetId = target ? normalizeId(target.id) : null
-  const targetCountry = target ? countryLabel(target) : ''
-  const targetCapital = targetId ? capitalOf(targetId) : null
+  const targetCountry = target ? countryLabel(target, locale) : ''
+  const targetCapital = targetId ? capitalOf(targetId, locale) : null
   const targetRegionName = targetRegion ? regionLabel(targetRegion) : ''
   const targetRegionCapital = targetRegion
     ? regionCapitalOf(targetRegion.properties.id)
@@ -766,25 +803,25 @@ export default function App() {
   const blitzSlotLabel = (id: string | null) => {
     if (!id) return '—'
     const feature = allCountries.find((c) => normalizeId(c.id) === id)
-    return feature ? countryLabel(feature) : '—'
+    return feature ? countryLabel(feature, locale) : '—'
   }
 
   const promptLabel =
     mode === 'blitz'
-      ? 'Finde auf der Karte'
+      ? t('promptBlitz')
       : mode === 'capital'
-        ? 'Hauptstadt von welchem Land?'
+        ? t('promptCapital')
         : mode === 'flag'
-          ? 'Welche Flagge ist das?'
+          ? t('promptFlag')
           : mode === 'cities'
-            ? `Wo liegt in ${targetCountry || '…'}?`
+            ? t('promptCity', { country: targetCountry || '…' })
             : mode === 'regions'
               ? regionQuiz === 'capital'
-                ? `Hauptstadt in ${targetCountry || '…'}?`
+                ? t('promptRegionCapital', { country: targetCountry || '…' })
                 : regionQuiz === 'flag'
-                  ? `Welche Flagge in ${targetCountry || '…'}?`
-                  : `Finde in ${targetCountry || '…'}`
-              : 'Finde'
+                  ? t('promptRegionFlag', { country: targetCountry || '…' })
+                  : t('promptRegion', { country: targetCountry || '…' })
+              : t('promptFind')
 
   const promptValue =
     mode === 'blitz'
@@ -803,17 +840,20 @@ export default function App() {
                   : targetRegionName
               : targetCountry
 
-  const continentLabel =
-    CONTINENT_OPTIONS.find((o) => o.id === continent)?.label ?? 'Welt'
-  const modeMeta = MODE_OPTIONS.find((m) => m.id === mode)!
+  const continentLabel = t(CONTINENT_UI_KEYS[continent])
+  const modeKeys = MODE_UI_KEYS[mode]
   const loadingData =
     (mode === 'regions' && !regionReady) || (mode === 'cities' && !citiesReady)
 
   const regionQuizPicker =
     mode === 'regions' ? (
       <fieldset className="mode-picker region-quiz-picker">
-        <legend className="filter-label">Aufgabe</legend>
-        <div className="mode-options mode-options-3" role="radiogroup" aria-label="Regionsaufgabe">
+        <legend className="filter-label">{t('task')}</legend>
+        <div
+          className="mode-options mode-options-3"
+          role="radiogroup"
+          aria-label={t('ariaRegionQuiz')}
+        >
           {REGION_QUIZ_OPTIONS.map((opt) => (
             <button
               key={opt.id}
@@ -830,7 +870,7 @@ export default function App() {
                 }
               }}
             >
-              {opt.label}
+              {t(REGION_QUIZ_UI_KEYS[opt.id])}
             </button>
           ))}
         </div>
@@ -840,7 +880,7 @@ export default function App() {
   const regionCountrySelect = (compact: boolean) =>
     needsCountryPick ? (
       <label className={`filter ${compact ? 'filter-compact' : ''}`}>
-        <span className="filter-label">Land</span>
+        <span className="filter-label">{t('country')}</span>
         <select
           className="filter-select"
           value={regionCountryId}
@@ -848,10 +888,10 @@ export default function App() {
             compact ? changeRegionCountry(e.target.value) : setRegionCountryId(e.target.value)
           }
           disabled={!compact && (loadingData || regionCountryOptions.length === 0)}
-          aria-label={compact ? 'Land wechseln' : 'Land wählen'}
+          aria-label={compact ? t('ariaCountryChange') : t('ariaCountryPick')}
         >
           {regionCountryOptions.length === 0 ? (
-            <option value="">Keine Länder verfügbar</option>
+            <option value="">{t('noCountries')}</option>
           ) : (
             regionCountryOptions.map((opt) => (
               <option key={opt.id} value={opt.id}>
@@ -875,40 +915,42 @@ export default function App() {
 
       {showOrbit ? (
         <header className="intro intro-orbit">
-          <p className="version">Version 1.0</p>
-          <h1 className="brand">Spaß mit Karten</h1>
+          <LanguagePicker className="lang-picker-intro" />
+          <p className="version">{t('version')}</p>
+          <h1 className="brand">{t('brand')}</h1>
         </header>
       ) : null}
 
       {showSetup ? (
         <header className="setup">
+          <LanguagePicker className="lang-picker-setup" />
           <button type="button" className="setup-back" onClick={backToIntro}>
-            ← Modi
+            {t('backModes')}
           </button>
-          <h1 className="setup-title">{modeMeta.label}</h1>
-          <p className="setup-hint">{modeMeta.hint}</p>
+          <h1 className="setup-title">{t(modeKeys.label)}</h1>
+          <p className="setup-hint">{t(modeKeys.hint)}</p>
 
           {mode === 'blitz' ? (
             <ul className="blitz-rules">
-              <li>Land, das mit dem Buchstaben beginnt</li>
-              <li>Land, dessen Hauptstadt mit dem Buchstaben beginnt</li>
-              <li>Land, dessen Flagge die Farbe enthält</li>
+              <li>{t('blitzRuleCountry')}</li>
+              <li>{t('blitzRuleCapital')}</li>
+              <li>{t('blitzRuleFlag')}</li>
             </ul>
           ) : null}
 
           {regionQuizPicker}
 
           <label className="filter">
-            <span className="filter-label">Kontinent</span>
+            <span className="filter-label">{t('continent')}</span>
             <select
               className="filter-select"
               value={continent}
               onChange={(e) => setContinent(e.target.value as ContinentFilter)}
-              aria-label="Optional nach Kontinent filtern"
+              aria-label={t('ariaContinent')}
             >
               {CONTINENT_OPTIONS.map((opt) => (
                 <option key={opt.id} value={opt.id}>
-                  {opt.label}
+                  {t(CONTINENT_UI_KEYS[opt.id])}
                 </option>
               ))}
             </select>
@@ -927,14 +969,16 @@ export default function App() {
             }
           >
             {allCountries.length === 0 || loadingData
-              ? 'Karte lädt …'
+              ? t('mapLoading')
               : pool.length === 0
-                ? 'Keine Einheiten'
+                ? t('noUnits')
                 : needsCountryPick && selectedRegionCountry
-                  ? `${countryLabel(selectedRegionCountry)} spielen`
+                  ? t('playCountry', {
+                      country: countryLabel(selectedRegionCountry, locale),
+                    })
                   : continent === 'all'
-                    ? 'Loslegen'
-                    : `${continentLabel} spielen`}
+                    ? t('start')
+                    : t('playContinent', { continent: continentLabel })}
           </button>
         </header>
       ) : null}
@@ -942,50 +986,51 @@ export default function App() {
       {showHud ? (
         <header className="hud">
           <div className="hud-left">
-            <div className="hud-brand">Spaß mit Karten</div>
+            <div className="hud-brand">{t('brand')}</div>
+            <LanguagePicker />
             <label className="filter filter-compact">
-              <span className="filter-label">Modus</span>
+              <span className="filter-label">{t('mode')}</span>
               <select
                 className="filter-select"
                 value={mode}
                 onChange={(e) => changeMode(e.target.value as GameMode)}
-                aria-label="Spielmodus wechseln"
+                aria-label={t('ariaMode')}
               >
                 {MODE_OPTIONS.map((opt) => (
                   <option key={opt.id} value={opt.id}>
-                    {opt.label}
+                    {t(MODE_UI_KEYS[opt.id].label)}
                   </option>
                 ))}
               </select>
             </label>
             {mode === 'regions' ? (
               <label className="filter filter-compact">
-                <span className="filter-label">Aufgabe</span>
+                <span className="filter-label">{t('task')}</span>
                 <select
                   className="filter-select"
                   value={regionQuiz}
                   onChange={(e) => changeRegionQuiz(e.target.value as RegionQuiz)}
-                  aria-label="Regionsaufgabe wechseln"
+                  aria-label={t('ariaRegionQuizChange')}
                 >
                   {REGION_QUIZ_OPTIONS.map((opt) => (
                     <option key={opt.id} value={opt.id}>
-                      {opt.label}
+                      {t(REGION_QUIZ_UI_KEYS[opt.id])}
                     </option>
                   ))}
                 </select>
               </label>
             ) : null}
             <label className="filter filter-compact">
-              <span className="filter-label">Kontinent</span>
+              <span className="filter-label">{t('continent')}</span>
               <select
                 className="filter-select"
                 value={continent}
                 onChange={(e) => changeContinent(e.target.value as ContinentFilter)}
-                aria-label="Optional nach Kontinent filtern"
+                aria-label={t('ariaContinent')}
               >
                 {CONTINENT_OPTIONS.map((opt) => (
                   <option key={opt.id} value={opt.id}>
-                    {opt.label}
+                    {t(CONTINENT_UI_KEYS[opt.id])}
                   </option>
                 ))}
               </select>
@@ -997,7 +1042,10 @@ export default function App() {
             {mode === 'blitz' && blitzChallenge ? (
               <>
                 <div className="blitz-prompt">
-                  <span className="blitz-letter" aria-label={`Buchstabe ${blitzChallenge.letter}`}>
+                  <span
+                    className="blitz-letter"
+                    aria-label={t('ariaLetter', { letter: blitzChallenge.letter })}
+                  >
                     {blitzChallenge.letter}
                   </span>
                   <span className="blitz-color">
@@ -1006,28 +1054,28 @@ export default function App() {
                       style={{ background: flagColorHex(blitzChallenge.color) }}
                       aria-hidden
                     />
-                    {flagColorLabel(blitzChallenge.color)}
+                    {t(flagColorLabelKey(blitzChallenge.color))}
                   </span>
                   <span
                     className={`blitz-timer ${blitzSecondsLeft <= 5 ? 'is-urgent' : ''}`}
-                    aria-label={`${blitzSecondsLeft} Sekunden`}
+                    aria-label={t('ariaSeconds', { n: blitzSecondsLeft })}
                   >
                     {blitzSecondsLeft}s
                   </span>
                 </div>
-                <div className="blitz-slots" aria-label="Gefundene Antworten">
+                <div className="blitz-slots" aria-label={t('ariaBlitzSlots')}>
                   {(
                     [
-                      ['country', 'Land', blitzAnswers.country],
-                      ['capital', 'Hauptstadt', blitzAnswers.capital],
-                      ['flag', 'Flagge', blitzAnswers.flag],
+                      ['country', 'slotCountry', blitzAnswers.country],
+                      ['capital', 'slotCapital', blitzAnswers.capital],
+                      ['flag', 'slotFlag', blitzAnswers.flag],
                     ] as const
-                  ).map(([key, label, value]) => (
+                  ).map(([key, labelKey, value]) => (
                     <div
                       key={key}
                       className={`blitz-slot ${value ? 'is-filled' : ''}`}
                     >
-                      <span className="blitz-slot-label">{label}</span>
+                      <span className="blitz-slot-label">{t(labelKey)}</span>
                       <span className={`blitz-slot-value ${value ? '' : 'is-empty'}`}>
                         {blitzSlotLabel(value)}
                       </span>
@@ -1041,7 +1089,7 @@ export default function App() {
                   key={promptFlagUrl}
                   className="prompt-flag"
                   src={promptFlagUrl}
-                  alt="Gesuchte Flagge"
+                  alt={t('flagAlt')}
                   decoding="async"
                 />
               </div>
@@ -1057,22 +1105,22 @@ export default function App() {
                 className="cta blitz-next"
                 onClick={() => startBlitzRound(pool)}
               >
-                Nächste Runde
+                {t('nextRound')}
               </button>
             ) : null}
           </div>
-          <div className="hud-stats" aria-label="Spielstand">
+          <div className="hud-stats" aria-label={t('ariaScore')}>
             <div>
               <span className="stat-value">{score}</span>
-              <span className="stat-label">Punkte</span>
+              <span className="stat-label">{t('points')}</span>
             </div>
             <div>
               <span className="stat-value">{streak}</span>
-              <span className="stat-label">Serie</span>
+              <span className="stat-label">{t('streak')}</span>
             </div>
             <div>
               <span className="stat-value">{round}</span>
-              <span className="stat-label">Runde</span>
+              <span className="stat-label">{t('round')}</span>
             </div>
           </div>
         </header>
@@ -1083,7 +1131,7 @@ export default function App() {
       >
         <div className={`globe-frame ${showOrbit ? 'globe-frame-orbit' : ''}`}>
           {showOrbit ? (
-            <div className="mode-orbit" role="navigation" aria-label="Spielmodus wählen">
+            <div className="mode-orbit" role="navigation" aria-label={t('ariaPickMode')}>
               {MODE_OPTIONS.map((opt, index) => {
                 const angle = index * (360 / MODE_OPTIONS.length) - 90
                 return (
@@ -1097,7 +1145,9 @@ export default function App() {
                     <span className="mode-orbit-disc">
                       <ModeIcon id={opt.id} className="mode-orbit-icon" />
                     </span>
-                    <span className="mode-orbit-label">{opt.shortLabel}</span>
+                    <span className="mode-orbit-label">
+                      {t(MODE_UI_KEYS[opt.id].short)}
+                    </span>
                   </button>
                 )
               })}

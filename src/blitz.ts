@@ -4,6 +4,7 @@ import {
   flagHasColor,
   type FlagColor,
 } from './flagColors'
+import type { Locale } from './i18n/types'
 import { countryLabel, normalizeId, type CountryFeature } from './WorldMap'
 
 export const BLITZ_SECONDS = 30
@@ -46,12 +47,20 @@ export function blitzComplete(answers: BlitzAnswers): boolean {
   return blitzFilledCount(answers) === 3
 }
 
-export function countryMatchesBlitzCountry(feature: CountryFeature, letter: string): boolean {
-  return startsWithLetter(countryLabel(feature), letter)
+export function countryMatchesBlitzCountry(
+  feature: CountryFeature,
+  letter: string,
+  locale: Locale,
+): boolean {
+  return startsWithLetter(countryLabel(feature, locale), letter)
 }
 
-export function countryMatchesBlitzCapital(feature: CountryFeature, letter: string): boolean {
-  const cap = capitalOf(normalizeId(feature.id))
+export function countryMatchesBlitzCapital(
+  feature: CountryFeature,
+  letter: string,
+  locale: Locale,
+): boolean {
+  const cap = capitalOf(normalizeId(feature.id), locale)
   return !!cap && startsWithLetter(cap, letter)
 }
 
@@ -64,11 +73,12 @@ export function matchBlitzCategory(
   feature: CountryFeature,
   challenge: BlitzChallenge,
   answers: BlitzAnswers,
+  locale: Locale,
 ): BlitzCategory | null {
   const id = normalizeId(feature.id)
   if (
     !answers.country &&
-    countryMatchesBlitzCountry(feature, challenge.letter) &&
+    countryMatchesBlitzCountry(feature, challenge.letter, locale) &&
     answers.capital !== id &&
     answers.flag !== id
   ) {
@@ -76,7 +86,7 @@ export function matchBlitzCategory(
   }
   if (
     !answers.capital &&
-    countryMatchesBlitzCapital(feature, challenge.letter) &&
+    countryMatchesBlitzCapital(feature, challenge.letter, locale) &&
     answers.country !== id &&
     answers.flag !== id
   ) {
@@ -93,12 +103,12 @@ export function matchBlitzCategory(
   return null
 }
 
-function lettersWithSolutions(pool: CountryFeature[]): string[] {
+function lettersWithSolutions(pool: CountryFeature[], locale: Locale): string[] {
   const nameLetters = new Set<string>()
   const capitalLetters = new Set<string>()
   for (const c of pool) {
-    nameLetters.add(initialLetter(countryLabel(c)))
-    const cap = capitalOf(normalizeId(c.id))
+    nameLetters.add(initialLetter(countryLabel(c, locale)))
+    const cap = capitalOf(normalizeId(c.id), locale)
     if (cap) capitalLetters.add(initialLetter(cap))
   }
   return [...nameLetters].filter((l) => capitalLetters.has(l)).sort()
@@ -110,8 +120,11 @@ function colorsWithSolutions(pool: CountryFeature[]): FlagColor[] {
   )
 }
 
-export function pickBlitzChallenge(pool: CountryFeature[]): BlitzChallenge | null {
-  const letters = lettersWithSolutions(pool)
+export function pickBlitzChallenge(
+  pool: CountryFeature[],
+  locale: Locale,
+): BlitzChallenge | null {
+  const letters = lettersWithSolutions(pool, locale)
   const colors = colorsWithSolutions(pool)
   if (letters.length === 0 || colors.length === 0) return null
   return {

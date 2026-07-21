@@ -9,15 +9,34 @@ export type ContinentId =
 
 export type ContinentFilter = ContinentId
 
-export const CONTINENT_OPTIONS: { id: ContinentFilter; label: string }[] = [
-  { id: 'all', label: 'Welt' },
-  { id: 'africa', label: 'Afrika' },
-  { id: 'asia', label: 'Asien' },
-  { id: 'europe', label: 'Europa' },
-  { id: 'northamerica', label: 'Nordamerika' },
-  { id: 'southamerica', label: 'Südamerika' },
-  { id: 'oceania', label: 'Ozeanien' },
+export const CONTINENT_OPTIONS: { id: ContinentFilter }[] = [
+  { id: 'all' },
+  { id: 'africa' },
+  { id: 'asia' },
+  { id: 'europe' },
+  { id: 'northamerica' },
+  { id: 'southamerica' },
+  { id: 'oceania' },
 ]
+
+export const CONTINENT_UI_KEYS: Record<
+  ContinentFilter,
+  | 'continentAll'
+  | 'continentAfrica'
+  | 'continentAsia'
+  | 'continentEurope'
+  | 'continentNorthamerica'
+  | 'continentSouthamerica'
+  | 'continentOceania'
+> = {
+  all: 'continentAll',
+  africa: 'continentAfrica',
+  asia: 'continentAsia',
+  europe: 'continentEurope',
+  northamerica: 'continentNorthamerica',
+  southamerica: 'continentSouthamerica',
+  oceania: 'continentOceania',
+}
 
 /** ISO 3166-1 numeric → Kontinent */
 export const COUNTRY_CONTINENT: Record<string, Exclude<ContinentId, 'all'>> = {

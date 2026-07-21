@@ -3,7 +3,9 @@ import { geoCentroid, geoGraticule10, geoOrthographic, geoPath, type GeoProjecti
 import { feature } from 'topojson-client'
 import type { Feature, FeatureCollection, Geometry } from 'geojson'
 import type { Topology, GeometryCollection } from 'topojson-specification'
-import { COUNTRY_NAMES_DE, EXCLUDED_IDS } from './countryNames'
+import { COUNTRY_NAMES, EXCLUDED_IDS, countryNameOf } from './countryNames'
+import type { Locale } from './i18n/types'
+import { useLocale } from './i18n'
 import type { ContinentFilter } from './continents'
 import type { RegionFeature } from './admin1'
 import type { CityFeature } from './cities'
@@ -84,13 +86,13 @@ function normalizeId(id: string | number | undefined): string {
 export function getPlayableCountries(features: CountryFeature[]): CountryFeature[] {
   return features.filter((f) => {
     const id = normalizeId(f.id)
-    return id && COUNTRY_NAMES_DE[id] && !EXCLUDED_IDS.has(id)
+    return id && COUNTRY_NAMES[id] && !EXCLUDED_IDS.has(id)
   })
 }
 
-export function countryLabel(feature: CountryFeature): string {
+export function countryLabel(feature: CountryFeature, locale: Locale = 'de'): string {
   const id = normalizeId(feature.id)
-  return COUNTRY_NAMES_DE[id] ?? feature.properties.name
+  return countryNameOf(id, locale) ?? feature.properties.name
 }
 
 function easeInOutQuart(t: number): number {
@@ -182,6 +184,7 @@ export function WorldMap({
   selectMode,
   autoRotate = false,
 }: Props) {
+  const { locale, t } = useLocale()
   const [countries, setCountries] = useState<CountryFeature[]>([])
   const [hovered, setHovered] = useState<string | null>(null)
   const [size, setSize] = useState({ w: 960, h: 560 })
@@ -610,15 +613,15 @@ export function WorldMap({
       <div className="map-glow" aria-hidden />
       <div className="map-zoom-veil" aria-hidden />
       <div className="map-zoom-streak" aria-hidden />
-      <p className="map-hint">Ziehen zum Drehen · +/− zoomt</p>
+      <p className="map-hint">{t('mapHint')}</p>
 
-      <div className="map-zoom-controls" role="group" aria-label="Zoom">
+      <div className="map-zoom-controls" role="group" aria-label={t('ariaZoom')}>
         <button
           type="button"
           className="map-zoom-btn"
           onClick={() => nudgeZoom(1)}
           disabled={!canZoomIn || zooming}
-          aria-label="Heranzoomen"
+          aria-label={t('ariaZoomIn')}
         >
           +
         </button>
@@ -627,7 +630,7 @@ export function WorldMap({
           className="map-zoom-btn"
           onClick={() => nudgeZoom(-1)}
           disabled={!canZoomOut || zooming}
-          aria-label="Herauszoomen"
+          aria-label={t('ariaZoomOut')}
         >
           −
         </button>
@@ -637,7 +640,7 @@ export function WorldMap({
         className="world-map world-globe"
         viewBox={`0 0 ${size.w} ${size.h}`}
         role="img"
-        aria-label="Interaktiver Globus"
+        aria-label={t('ariaGlobe')}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={endDrag}
@@ -710,7 +713,7 @@ export function WorldMap({
                 }
                 onMouseLeave={() => setHovered(null)}
               >
-                <title>{countryLabel(c)}</title>
+                <title>{countryLabel(c, locale)}</title>
               </path>
             )
           })}

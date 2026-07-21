@@ -480,3 +480,74 @@ Nach **jedem** User-Prompt zwingend aktualisieren.
 - Repo: https://github.com/philipp-hartmann-hub/Spa-mit-Karten
 
 **Status:** erledigt
+
+---
+
+## 2026-07-21 — Prompt 38
+
+**User:** Browser Link bitte.
+
+**Aktion:**
+- Repo-URL genannt: https://github.com/philipp-hartmann-hub/Spa-mit-Karten
+
+**Status:** erledigt
+
+---
+
+## 2026-07-21 — Prompt 39
+
+**User:** Nein, Link zur Anwendung, nicht zu GitHub.
+
+**Aktion:**
+- Vite-Dev-Server gestartet; App-URL: http://127.0.0.1:5173/
+
+**Status:** erledigt
+
+---
+
+## 2026-07-21 — Prompt 40
+
+**User:** App per Vercel deployed: https://spa-mit-karten.vercel.app/#
+
+**Aktion:**
+- Live-URL notiert: https://spa-mit-karten.vercel.app/
+
+**Status:** erledigt
+
+---
+
+## 2026-07-21 — Prompt 41
+
+**User:** Mehrsprachmodus DE/EN/FR; bei Auswahl alles übersetzen.
+
+**Aktion:**
+- i18n mit LocaleContext, UI-Dictionaries und LanguagePicker (DE|EN|FR, localStorage)
+- Länder- und Hauptstadtnamen lokalisiert; UI/Kontinente/Modi/Flaggenfarben übersetzt
+- Blitz-Matching an aktuelle Locale gekoppelt; Regionen-/Städtenamen vorerst unverändert
+
+**Status:** erledigt
+
+---
+
+## 2026-07-21 — Prompt 42
+
+**User:** Auf GitHub und dann auf Vercel pushen.
+
+**Aktion:**
+- Mehrsprachigkeit committed und nach `origin/main` gepusht
+- Vercel-Deploy ausgelöst (Git-Push bzw. CLI)
+
+**Status:** erledigt
+
+---
+
+## 2026-07-21 — Prompt 41
+
+**User:** App.tsx auf i18n-System umstellen (`useLocale`, `t()`, LanguagePicker, locale an Label-/Blitz-Helfer)
+
+**Aktion:**
+- `App.tsx` vollständig auf i18n umgestellt: `useLocale`, alle UI-Strings via `t()`, Mode-/Kontinent-/Region-Quiz-Keys, LanguagePicker in Intro/Setup/HUD
+- `locale` an `countryLabel`, `capitalOf`, `pickBlitzChallenge`, `matchBlitzCategory` und `localeCompare` durchgereicht
+- `flagColorLabel` durch `flagColorLabelKey` ersetzt; Typecheck ok
+
+**Status:** erledigt
