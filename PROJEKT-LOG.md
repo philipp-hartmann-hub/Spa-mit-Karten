@@ -541,6 +541,31 @@ Nach **jedem** User-Prompt zwingend aktualisieren.
 
 ---
 
+## 2026-07-21 — Prompt 43
+
+**User:** Multiplayer: Startseite Single/Multi; Raum mit Link/QR; Spielleiter; Zeitrennen bzw. Blitz-Punkte; Rangliste.
+
+**Aktion:**
+- Home-Screen mit Einzel-/Mehrspieler-Wahl; Singleplayer unverändert gekapselt
+- Multiplayer-Lobby (PeerJS): Raumcode, Link, QR, Namen, max. 8 Spieler, Host wählt Modus/Runden
+- Race-Modi: gleiche Fragen, Fehler = weiterprobieren, Rangliste nach Zeit
+- Blitz-MP: gleiche Challenges, 2/1-Punkte, Rangliste nach Punkten
+
+**Status:** erledigt
+
+---
+
+## 2026-07-21 — Prompt 44
+
+**User:** Bitte deployen.
+
+**Aktion:**
+- Multiplayer-Änderungen committed und nach `origin/main` gepusht (Vercel-Deploy über Git-Integration)
+
+**Status:** erledigt
+
+---
+
 ## 2026-07-21 — Prompt 41
 
 **User:** App.tsx auf i18n-System umstellen (`useLocale`, `t()`, LanguagePicker, locale an Label-/Blitz-Helfer)
@@ -549,5 +574,15 @@ Nach **jedem** User-Prompt zwingend aktualisieren.
 - `App.tsx` vollständig auf i18n umgestellt: `useLocale`, alle UI-Strings via `t()`, Mode-/Kontinent-/Region-Quiz-Keys, LanguagePicker in Intro/Setup/HUD
 - `locale` an `countryLabel`, `capitalOf`, `pickBlitzChallenge`, `matchBlitzCategory` und `localeCompare` durchgereicht
 - `flagColorLabel` durch `flagColorLabelKey` ersetzt; Typecheck ok
+
+**Status:** erledigt
+
+## 2026-07-21 — Prompt 43
+
+**User:** Multiplayer-Planung: Entry-Flow, Backend, Deps/Deploy, Game Modes, shared question generation aus pick/start-Logik.
+
+**Aktion:**
+- Codebase exploriert (App.tsx Phasen, gameModes, package.json, blitz/pick-Logik)
+- Kurzbericht für Multiplayer-Planung erstellt (kein Backend, rein clientseitig Vite/Vercel)
 
 **Status:** erledigt

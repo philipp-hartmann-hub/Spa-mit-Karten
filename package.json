@@ -11,6 +11,8 @@
   "dependencies": {
     "d3-geo": "^3.1.1",
     "d3-geo-projection": "^4.0.0",
+    "peerjs": "^1.5.5",
+    "qrcode.react": "^4.2.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "topojson-client": "^3.1.0"
@@ -18,6 +20,7 @@
   "devDependencies": {
     "@types/d3-geo": "^3.1.0",
     "@types/geojson": "^7946.0.16",
+    "@types/qrcode.react": "^1.0.5",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
     "@types/topojson-client": "^3.1.5",
