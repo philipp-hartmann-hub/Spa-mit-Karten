@@ -603,6 +603,20 @@ Nach **jedem** User-Prompt zwingend aktualisieren.
 
 ---
 
+## 2026-08-20 — Prompt 48
+
+**User:** Kosovo in der AKarte nicht auswählbar; Krim gehört zu Russland — das ist falsch.
+
+**Aktion:**
+- `src/geoPolitics.ts`: Natural-Earth-Korrekturen — Kosovo → ID `983` (XK), Krim von Russland zur Ukraine
+- Kosovo in Namen/Hauptstadt/Kontinent/ISO/Flaggenfarben ergänzt
+- `fixCountryFeatures` in `WorldMap` / `getPlayableCountries` verdrahtet
+- Nach `origin/main` gepusht
+
+**Status:** erledigt
+
+---
+
 ## 2026-07-21 — Prompt 41
 
 **User:** App.tsx auf i18n-System umstellen (`useLocale`, `t()`, LanguagePicker, locale an Label-/Blitz-Helfer)
