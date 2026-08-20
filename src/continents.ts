@@ -185,6 +185,7 @@ export const COUNTRY_CONTINENT: Record<string, Exclude<ContinentId, 'all'>> = {
   '682': 'asia',
   '686': 'africa',
   '688': 'europe',
+  '983': 'europe',
   '694': 'africa',
   '702': 'asia',
   '703': 'europe',

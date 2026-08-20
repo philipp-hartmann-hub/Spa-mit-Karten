@@ -9,6 +9,7 @@ import { useLocale } from './i18n'
 import type { ContinentFilter } from './continents'
 import type { RegionFeature } from './admin1'
 import type { CityFeature } from './cities'
+import { fixCountryFeatures } from './geoPolitics'
 
 export type CountryFeature = Feature<Geometry, { name: string }> & { id?: string | number }
 
@@ -84,7 +85,7 @@ function normalizeId(id: string | number | undefined): string {
 }
 
 export function getPlayableCountries(features: CountryFeature[]): CountryFeature[] {
-  return features.filter((f) => {
+  return fixCountryFeatures(features).filter((f) => {
     const id = normalizeId(f.id)
     return id && COUNTRY_NAMES[id] && !EXCLUDED_IDS.has(id)
   })
@@ -260,7 +261,7 @@ export function WorldMap({
       .then((topo: WorldTopology) => {
         if (cancelled) return
         const fc = feature(topo, topo.objects.countries) as FeatureCollection<Geometry, { name: string }>
-        setCountries(fc.features as CountryFeature[])
+        setCountries(fixCountryFeatures(fc.features as CountryFeature[]))
       })
     return () => {
       cancelled = true

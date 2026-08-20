@@ -167,6 +167,7 @@ export const CAPITALS: Record<string, LocalizedName> = {
   '862': { de: 'Caracas', en: 'Caracas', fr: 'Caracas' },
   '887': { de: 'Sanaa', en: 'Sanaa', fr: 'Sanaa' },
   '894': { de: 'Lusaka', en: 'Lusaka', fr: 'Lusaka' },
+  '983': { de: 'Priština', en: 'Pristina', fr: 'Pristina' },
 }
 
 export function capitalOf(countryId: string, locale: Locale = 'de'): string | null {

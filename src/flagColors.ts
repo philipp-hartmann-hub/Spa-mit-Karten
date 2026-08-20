@@ -169,6 +169,7 @@ const FLAG_COLORS_A2: Record<string, FlagColor[]> = {
   SA: ['green', 'white'],
   SN: ['green', 'yellow', 'red'],
   RS: ['red', 'blue', 'white'],
+  XK: ['blue', 'yellow', 'white'],
   SL: ['green', 'white', 'blue'],
   SG: ['red', 'white'],
   SK: ['white', 'blue', 'red'],

@@ -187,6 +187,7 @@ export const COUNTRY_NAMES: Record<string, LocalizedName> = {
   '862': { de: 'Venezuela', en: 'Venezuela', fr: 'Venezuela' },
   '887': { de: 'Jemen', en: 'Yemen', fr: 'Yémen' },
   '894': { de: 'Sambia', en: 'Zambia', fr: 'Zambie' },
+  '983': { de: 'Kosovo', en: 'Kosovo', fr: 'Kosovo' },
 }
 
 /** @deprecated use COUNTRY_NAMES */

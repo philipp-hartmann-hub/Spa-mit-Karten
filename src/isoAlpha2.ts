@@ -146,6 +146,7 @@ export const NUMERIC_TO_A2: Record<string, string> = {
   '682': 'SA',
   '686': 'SN',
   '688': 'RS',
+  '983': 'XK',
   '694': 'SL',
   '702': 'SG',
   '703': 'SK',
