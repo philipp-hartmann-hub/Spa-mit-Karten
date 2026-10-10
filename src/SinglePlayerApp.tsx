@@ -35,13 +35,18 @@ import {
   type CityFeature,
 } from './cities'
 import {
+  LAB_MODE_OPTIONS,
+  LAB_MODE_UI_KEYS,
   MODE_OPTIONS,
   MODE_UI_KEYS,
   REGION_QUIZ_OPTIONS,
   REGION_QUIZ_UI_KEYS,
   type GameMode,
+  type LabMode,
   type RegionQuiz,
 } from './gameModes'
+import { LabSession } from './labModes/LabSession'
+import { LabModeIcon } from './labModes/LabModeIcon'
 import {
   BLITZ_SECONDS,
   blitzComplete,
@@ -70,6 +75,7 @@ function pickRandom<T>(pool: T[], exclude?: ((item: T) => boolean) | null): T {
 
 export default function SinglePlayerApp({ onExit }: { onExit?: () => void }) {
   const { locale, t } = useLocale()
+  const [labMode, setLabMode] = useState<LabMode | null>(null)
   const [phase, setPhase] = useState<Phase>('intro')
   const [mode, setMode] = useState<GameMode>('country')
   const [allCountries, setAllCountries] = useState<CountryFeature[]>([])
@@ -909,6 +915,10 @@ export default function SinglePlayerApp({ onExit }: { onExit?: () => void }) {
   const mapIdle = phase === 'intro' || phase === 'setup'
   const inGameMap = phase === 'playing' || phase === 'reveal'
 
+  if (labMode) {
+    return <LabSession mode={labMode} onExit={() => setLabMode(null)} />
+  }
+
   return (
     <div className={`app app-${phase}`}>
       <div className="atmosphere" aria-hidden />
@@ -1136,27 +1146,46 @@ export default function SinglePlayerApp({ onExit }: { onExit?: () => void }) {
       >
         <div className={`globe-frame ${showOrbit ? 'globe-frame-orbit' : ''}`}>
           {showOrbit ? (
-            <div className="mode-orbit" role="navigation" aria-label={t('ariaPickMode')}>
-              {MODE_OPTIONS.map((opt, index) => {
-                const angle = index * (360 / MODE_OPTIONS.length) - 90
-                return (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    className="mode-orbit-item"
-                    style={{ '--orbit-angle': `${angle}deg` } as CSSProperties}
-                    onClick={() => openSetup(opt.id)}
-                  >
-                    <span className="mode-orbit-disc">
-                      <ModeIcon id={opt.id} className="mode-orbit-icon" />
-                    </span>
-                    <span className="mode-orbit-label">
-                      {t(MODE_UI_KEYS[opt.id].short)}
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
+            <>
+              <div className="mode-orbit" role="navigation" aria-label={t('ariaPickMode')}>
+                {MODE_OPTIONS.map((opt, index) => {
+                  const angle = index * (360 / MODE_OPTIONS.length) - 90
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      className="mode-orbit-item"
+                      style={{ '--orbit-angle': `${angle}deg` } as CSSProperties}
+                      onClick={() => openSetup(opt.id)}
+                    >
+                      <span className="mode-orbit-disc">
+                        <ModeIcon id={opt.id} className="mode-orbit-icon" />
+                      </span>
+                      <span className="mode-orbit-label">
+                        {t(MODE_UI_KEYS[opt.id].short)}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+              <div className="lab-orbit-block">
+                <p className="lab-group-label">{t('labGroup')}</p>
+                <div className="lab-mode-grid" role="navigation" aria-label={t('labGroup')}>
+                  {LAB_MODE_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      className="lab-mode-chip"
+                      onClick={() => setLabMode(opt.id)}
+                      title={t(LAB_MODE_UI_KEYS[opt.id].hint)}
+                    >
+                      <LabModeIcon id={opt.id} className="lab-mode-chip-icon" />
+                      <span>{t(LAB_MODE_UI_KEYS[opt.id].short)}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </>
           ) : null}
 
           <WorldMap

@@ -1,5 +1,12 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
-import { geoCentroid, geoGraticule10, geoOrthographic, geoPath, type GeoProjection } from 'd3-geo'
+import {
+  geoCentroid,
+  geoCircle,
+  geoGraticule10,
+  geoOrthographic,
+  geoPath,
+  type GeoProjection,
+} from 'd3-geo'
 import { feature } from 'topojson-client'
 import type { Feature, FeatureCollection, Geometry } from 'geojson'
 import type { Topology, GeometryCollection } from 'topojson-specification'
@@ -24,6 +31,8 @@ type GlobeView = {
   clipAngle: number
 }
 
+export type GlobeMarker = { id: string; lonlat: [number, number]; className?: string }
+
 type Props = {
   targetId: string | null
   feedback: Feedback
@@ -43,6 +52,14 @@ type Props = {
   selectMode: SelectMode
   /** Langsame Idle-Drehung (z. B. Startseite) */
   autoRotate?: boolean
+  /** Lab: Klick auf Globuspunkt (nicht Drag) */
+  onPointSelect?: (lonlat: [number, number]) => void
+  markers?: GlobeMarker[]
+  pathCoords?: [number, number][]
+  /** Lab: Nachthalbkugel — Mittelpunkt = Antipode des Subsolarpunkts */
+  nightShade?: { center: [number, number]; radiusDeg?: number } | null
+  /** Lab: animiert den Globus so, dass lonlat zentriert ist */
+  rotateTo?: [number, number] | null
 }
 
 const SPIN_MS = 2200
@@ -184,6 +201,11 @@ export function WorldMap({
   wrongCityId,
   selectMode,
   autoRotate = false,
+  onPointSelect,
+  markers,
+  pathCoords,
+  nightShade = null,
+  rotateTo = null,
 }: Props) {
   const { locale, t } = useLocale()
   const [countries, setCountries] = useState<CountryFeature[]>([])
@@ -551,7 +573,47 @@ export function WorldMap({
     }
 
     if (toSelect && interactive) onSelect(toSelect)
+    else if (!moved && onPointSelect && interactive) {
+      const rect = e.currentTarget.getBoundingClientRect()
+      const x = ((e.clientX - rect.left) / rect.width) * size.w
+      const y = ((e.clientY - rect.top) / rect.height) * size.h
+      const projection = makeProjection(size, withUserZoom(viewRef.current, userZoom))
+      const inv = projection.invert?.([x, y])
+      if (inv && Number.isFinite(inv[0]) && Number.isFinite(inv[1])) {
+        onPointSelect([inv[0], inv[1]])
+      }
+    }
   }
+
+  useEffect(() => {
+    if (!rotateTo) return
+    const [lon, lat] = rotateTo
+    const from = viewRef.current
+    const to: GlobeView = {
+      ...from,
+      rotate: [-lon, -lat, from.rotate[2]] as [number, number, number],
+    }
+    stopInertia()
+    stopScriptedAnim()
+    const t0 = performance.now()
+    const dur = 1600
+    const tick = (now: number) => {
+      const u = Math.min(1, (now - t0) / dur)
+      const e = 1 - (1 - u) ** 3
+      commitView({
+        ...from,
+        rotate: [
+          from.rotate[0] + (to.rotate[0] - from.rotate[0]) * e,
+          from.rotate[1] + (to.rotate[1] - from.rotate[1]) * e,
+          from.rotate[2],
+        ],
+      })
+      if (u < 1) animRef.current = requestAnimationFrame(tick)
+      else animRef.current = null
+    }
+    animRef.current = requestAnimationFrame(tick)
+    return () => stopScriptedAnim()
+  }, [rotateTo])
 
   const { sphere, graticule, countryPaths, regionPaths, cityMarkers } = useMemo(() => {
     const projection = makeProjection(size, withUserZoom(view, userZoom))
@@ -793,6 +855,58 @@ export function WorldMap({
                     {rank}
                   </text>
                 </g>
+              )
+            })}
+          </g>
+        ) : null}
+
+        {nightShade || (pathCoords && pathCoords.length > 1) || (markers && markers.length > 0) ? (
+          <g className="lab-globe-overlays" pointerEvents="none">
+            {nightShade
+              ? (() => {
+                  const projection = makeProjection(size, withUserZoom(view, userZoom))
+                  const generator = geoPath(projection)
+                  const circle = geoCircle()
+                    .center(nightShade.center)
+                    .radius(nightShade.radiusDeg ?? 90)()
+                  const d = generator(circle)
+                  return d ? <path d={d} className="lab-night-shade" /> : null
+                })()
+              : null}
+            {pathCoords && pathCoords.length > 1
+              ? (() => {
+                  const projection = makeProjection(size, withUserZoom(view, userZoom))
+                  const nodes = []
+                  for (let i = 1; i < pathCoords.length; i++) {
+                    const a = projection(pathCoords[i - 1]!)
+                    const b = projection(pathCoords[i]!)
+                    if (!a || !b) continue
+                    nodes.push(
+                      <line
+                        key={i}
+                        x1={a[0]}
+                        y1={a[1]}
+                        x2={b[0]}
+                        y2={b[1]}
+                        className="lab-globe-path"
+                      />,
+                    )
+                  }
+                  return nodes
+                })()
+              : null}
+            {markers?.map((m) => {
+              const projection = makeProjection(size, withUserZoom(view, userZoom))
+              const p = projection(m.lonlat)
+              if (!p) return null
+              return (
+                <circle
+                  key={m.id}
+                  cx={p[0]}
+                  cy={p[1]}
+                  r={5}
+                  className={m.className ?? 'lab-globe-marker'}
+                />
               )
             })}
           </g>

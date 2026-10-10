@@ -637,3 +637,75 @@ Nach **jedem** User-Prompt zwingend aktualisieren.
 - Kurzbericht für Multiplayer-Planung erstellt (kein Backend, rein clientseitig Vite/Vercel)
 
 **Status:** erledigt
+
+---
+
+## 2026-10-10 — Prompt 49
+
+**User:** WorldMap-Rendering für FlatMap erkunden (Biome, Stroke, Projektion, Länder-Fix, Pointer/Drag); labModes/geoArea/FlatMap/Entdecken im Repo suchen.
+
+**Aktion:**
+- Codebase-Analyse: `WorldMap.tsx`, `App.css`, `geoPolitics.ts`, `biomes.ts`; keine Treffer für `src/labModes/`, `FlatMap`, `geoArea`, `Entdecken`
+
+**Status:** erledigt
+
+---
+
+## 2026-10-10 — Prompt 49
+
+**User:** Codebase-Exploration: Spielmodi (`gameModes.ts`, `SinglePlayerApp`, i18n, package.json); Lab/Discover-Konzept?
+
+**Aktion:**
+- Spielmodi-Architektur dokumentiert (Typen, UI-Keys, Phasen intro/setup/playing/reveal, Orbit/Setup/HUD)
+- i18n-Modus-Keys und package.json-Scripts/Deps zusammengefasst
+- Kein bestehendes Lab- oder Discover-Konzept im Repo gefunden
+
+**Status:** erledigt
+
+---
+
+## 2026-10-10 — Prompt 50
+
+**User:** Fertig?
+
+**Aktion:**
+- Status geprüft: Plan „Lab-Modi Infrastruktur“ spezifiziert (9 Modi + Popgrid + Vitest), Umsetzung noch nicht gestartet (`src/labModes/` fehlt, Todos pending)
+
+**Status:** erledigt
+
+---
+
+## 2026-10-10 — Prompt 51
+
+**User:** Ja (Umsetzung des Lab-Modi-Plans starten)
+
+**Aktion:**
+- `src/labModes/` angelegt: geo/sun/population/split, FlatMap, RoundResult, LabSession, alle 9 Modi
+- Vitest (`npm test`), WorldMap-Lab-Hooks (Marker, Pfad, nightShade, rotateTo, onPointSelect)
+- Intro „Entdecken“, i18n DE/EN/FR, Popgrid-Stub + Build-Skript/README
+- MP Puzzle/Split noch nicht verdrahtet (SP-Fokus)
+
+**Status:** teilweise
+
+---
+
+## 2026-10-10 — Prompt 52
+
+**User:** Pushen?
+
+**Aktion:**
+- Zuerst blockiert durch Xcode-Lizenz an `/usr/bin/git`
+- Mit CLT-Git (`/Library/Developer/CommandLineTools/usr/bin/git`) committen und nach `origin/main` pushen
+
+**Status:** erledigt
+
+---
+
+## 2026-10-10 — Prompt 53
+
+**User:** Bitte selbst drum kümmern (Push trotz Xcode-Lizenz)
+
+**Aktion:**
+- CLT-Git genutzt; Lab-Modi-Änderungen committed und gepusht (ohne `tsconfig.tsbuildinfo`)
+
+**Status:** erledigt
